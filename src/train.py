@@ -33,6 +33,7 @@ def run(seed: int, out_dir=None, split_seed: int = config.SEED) -> pd.DataFrame:
     opt = torch.optim.Adam(model.parameters(), lr=config.LR)
 
     rows = []
+    best_val, best_state, best_epoch = float("inf"), None, 0
     for epoch in range(1, config.EPOCHS + 1):
         # --- обучение: один проход по батчам ---
         model.train()
@@ -49,15 +50,21 @@ def run(seed: int, out_dir=None, split_seed: int = config.SEED) -> pd.DataFrame:
             n += len(xb)
         # --- проверка на валидации после каждой эпохи (веса не меняются) ---
         val_loss, val_acc, _ = evaluate(model, X_va, y_va, loss_fn)
+        # Запоминаем веса лучшей по val_loss эпохи (аналог early stopping без обрыва
+        # обучения: полная история остаётся для графиков переобучения)
+        if val_loss < best_val:
+            best_val, best_epoch = val_loss, epoch
+            best_state = {k: v.clone() for k, v in model.state_dict().items()}
         rows.append(dict(epoch=epoch, train_loss=total / n, train_acc=correct / n,
                          val_loss=val_loss, val_acc=val_acc))
     hist = pd.DataFrame(rows)
 
-    # Тест считаем один раз, после обучения; по нему модель не подбирается
+    # Тест считаем один раз, на весах лучшей эпохи по валидации; по тесту модель не подбирается
+    model.load_state_dict(best_state)
     test_loss, test_acc, logits = evaluate(model, X_te, y_te, loss_fn)
     pred = (logits > 0).float().numpy().ravel()
     yt = y_te.numpy().ravel()
-    metrics = dict(seed=seed, test_loss=test_loss, test_acc=test_acc,
+    metrics = dict(seed=seed, best_epoch=best_epoch, test_loss=test_loss, test_acc=test_acc,
                    test_f1=float(f1_score(yt, pred)),
                    test_auc=float(roc_auc_score(yt, logits.numpy().ravel())))
     if out_dir is not None:

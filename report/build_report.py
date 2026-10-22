@@ -53,8 +53,17 @@ def main():
     d.add_paragraph(f"Один seed: test acc {stat(same, 'test_acc')}, test AUC {stat(same, 'test_auc')}. "
                     f"Максимальное отклонение кривых между запусками: {delta.split('=')[1]}.")
     d.add_paragraph(f"Разные seed: test acc {stat(diff, 'test_acc')}, test AUC {stat(diff, 'test_auc')}.")
+    t = d.add_table(rows=1, cols=5); t.style = "Table Grid"
+    for c, name in zip(t.rows[0].cells, ("Запуск", "seed", "best epoch", "test acc", "test AUC")):
+        c.text = name
+    for _, r in diff.iterrows():
+        cells = t.add_row().cells
+        for c, v in zip(cells, (int(r.run), int(r.seed), int(r.best_epoch),
+                                f"{r.test_acc:.4f}", f"{r.test_auc:.4f}")):
+            c.text = str(v)
     d.add_paragraph(
-        "Вывод: при фиксированном seed обучение побитово повторяется на CPU, все 15 запусков идентичны. "
+        "Ответ на вопрос о повторяемости: ДА, удалось. При фиксированном seed обучение побитово "
+        "повторяется на CPU, все 15 запусков идентичны (max|Δ| = 0). "
         if repro else
         "Вывод: полной побитовой повторяемости добиться не удалось, см. отклонение выше. ")
     d.add_paragraph("При смене seed (инициализация и порядок батчей) результаты немного различаются, "
@@ -69,9 +78,12 @@ def main():
         f"продолжает падать ({m.train_loss.iloc[0]:.4f} → {m.train_loss.iloc[-1]:.4f}). "
         "Это признак начавшегося переобучения; для практического применения следует "
         "ограничить число эпох или использовать early stopping.")
+    share = pd.read_csv(config.DATA_PATH)[config.TARGET].mean()
     d.add_paragraph(
-        "Точность на тесте около 66% при доле класса 1 около 63%: модель лишь немного лучше "
-        "тривиального предсказания, признаки датасета слабо разделяют классы (AUC около 0.69).")
+        f"Тестовая выборка оценивается на весах лучшей по val_loss эпохи (в среднем эпоха "
+        f"{diff.best_epoch.mean():.1f}). Точность на тесте {diff.test_acc.mean():.1%} при доле "
+        f"класса 1 {share:.1%}: модель лишь немного лучше тривиального предсказания, признаки "
+        f"датасета слабо разделяют классы (AUC {diff.test_auc.mean():.2f}).")
     d.save(config.ROOT / "report" / "Report.docx")
 
 

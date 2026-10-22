@@ -10,7 +10,7 @@ FEATURES = ["Engine rpm", "Lub oil pressure", "Fuel pressure",
 
 def main():
     sizes = [len(FEATURES), *config.HIDDEN, 1]
-    labels = ["Вход", "Linear + ReLU", "Linear + ReLU", "Linear → sigmoid"]
+    labels = ["Вход", "Linear + ReLU", "Linear + ReLU", "Linear → логит (sigmoid в loss)"]
     shown = [min(n, 8) for n in sizes]
     fig, ax = plt.subplots(figsize=(10, 5.5))
     pos = []
@@ -18,8 +18,7 @@ def main():
         ys = [(j - (k - 1) / 2) * 0.8 for j in range(k)]
         pos.append([(i * 3, y) for y in ys])
         ax.scatter([i * 3] * k, ys, s=300, zorder=3, color=f"C{i}", edgecolor="k")
-        extra = f" ({sizes[i]})" if sizes[i] > k else f" ({sizes[i]})"
-        ax.text(i * 3, 3.7, labels[i] + extra, ha="center", fontsize=10)
+        ax.text(i * 3, 3.7, f"{labels[i]} ({sizes[i]})", ha="center", fontsize=10)
         if sizes[i] > k:
             ax.text(i * 3, -(k / 2) * 0.8 - 0.3, "⋮", ha="center", fontsize=16)
     for a, b in zip(pos[:-1], pos[1:]):
